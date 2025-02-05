@@ -1,14 +1,16 @@
-import React, {useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   View,
   TouchableOpacity,
   FlatList,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import Video from 'react-native-video';
+import {collection, getDocs} from 'firebase/firestore';
+import {db} from './src/offpista/firebase/firebaseConfig';
 import {ICONS} from './src/offpista/utils/Icons';
-import {SizeUtils} from './src/offpista/utils/SizeUtils';
 import CustomText from './src/offpista/components/CustomText';
 import {COLORS} from './src/offpista/utils/Colors';
 
@@ -16,52 +18,84 @@ const {width, height} = Dimensions.get('window');
 
 interface VideoItem {
   id: string;
-  uri: string;
+  url: string;
   title: string;
   description: string;
 }
 
-const videos: VideoItem[] = [
-  {
-    id: '1',
-    uri: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    title: 'Secrets Billionaire',
-    description:
-      'To escape a politically motivated arranged marriage, a privileged heir Lucas is the best mujol ',
-  },
-  {
-    id: '2',
-    uri: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    title: 'Mystery Unfolds',
-    description: 'A detective stumbles upon a case that changes everything...',
-  },
-  {
-    id: '3',
-    uri: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    title: 'Action Packed',
-    description: 'A rogue agent fights against corruption and injustice...',
-  },
-];
-
-const ReelsScreen: React.FC = () => {
+const App: React.FC = () => {
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const videoRefs = useRef<Array<any>>([]);
+
+  // Fetch videos from Firebase
+  useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'videos'));
+        const fetchedVideos: VideoItem[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as VideoItem[];
+        setVideos(fetchedVideos);
+      } catch (error) {
+        console.error('Error fetching videos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, []);
+
+  // Detect visible items & update playing video
+  const onViewableItemsChanged = useRef(
+    ({viewableItems}: {viewableItems: any[]}) => {
+      if (
+        viewableItems.length > 0 &&
+        typeof viewableItems[0].index === 'number'
+      ) {
+        const newIndex = viewableItems[0].index;
+
+        if (newIndex !== playingIndex) {
+          // Reset the previous video
+          if (playingIndex !== null && videoRefs.current[playingIndex]) {
+            videoRefs.current[playingIndex].seek(0); // Restart previous video
+          }
+
+          // Update playing index
+          setPlayingIndex(newIndex);
+
+          // Reset the new video
+          setTimeout(() => {
+            if (videoRefs.current[newIndex]) {
+              videoRefs.current[newIndex].seek(0); // Restart new video
+            }
+          }, 100); // Delay ensures ref is assigned before seeking
+        }
+      }
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({
+    viewAreaCoveragePercentThreshold: 50,
+  }).current;
 
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => (
     <View style={styles.container}>
       {/* Video Background */}
+
       <Video
         ref={ref => (videoRefs.current[index] = ref)}
-        source={{uri: item.uri}}
+        source={{uri: item?.url}}
         style={styles.video}
         resizeMode="cover"
         repeat
-        muted
+        playInBackground={false}
+        playWhenInactive={false}
+        paused={playingIndex !== index}
       />
-
-      {/* Top Left Search Icon */}
-      <TouchableOpacity style={styles.searchIcon}>
-        {ICONS.searchIcon}
-      </TouchableOpacity>
 
       {/* Right Sidebar Icons */}
       <View style={styles.rightSidebar}>
@@ -84,7 +118,10 @@ const ReelsScreen: React.FC = () => {
         <CustomText weightType="bold" style={styles.title}>
           {item.title}
         </CustomText>
-        <CustomText ellipsizeMode="tail" truncateAt={75} style={styles.description}>
+        <CustomText
+          ellipsizeMode="tail"
+          numberOfLines={2}
+          style={styles.description}>
           {item.description}
         </CustomText>
         <TouchableOpacity style={styles.watchButton}>
@@ -93,6 +130,14 @@ const ReelsScreen: React.FC = () => {
       </View>
     </View>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="white" />
+      </View>
+    );
+  }
 
   return (
     <FlatList
@@ -103,12 +148,16 @@ const ReelsScreen: React.FC = () => {
       showsVerticalScrollIndicator={false}
       snapToAlignment="start"
       decelerationRate="fast"
+      initialNumToRender={2} // Reduce initial rendering
+      maxToRenderPerBatch={3} // Lazy loading
+      windowSize={5} // Prevent rendering too many items
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged} // Detect visible videos
     />
   );
 };
 
 const styles = StyleSheet.create({
-  playButton: {},
   container: {
     width,
     height,
@@ -118,11 +167,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'absolute',
-  },
-  searchIcon: {
-    position: 'absolute',
-    top: 70,
-    left: 20,
   },
   rightSidebar: {
     position: 'absolute',
@@ -150,7 +194,6 @@ const styles = StyleSheet.create({
   description: {
     color: COLORS.white,
     fontSize: 14,
-    width: SizeUtils.responsiveWidth(80),
     marginTop: 5,
   },
   watchButton: {
@@ -158,7 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 10,
-    width: SizeUtils.responsiveWidth(60),
+    width: width * 0.6,
     alignItems: 'center',
   },
   watchButtonText: {
@@ -166,6 +209,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
 });
 
-export default ReelsScreen;
+export default App;
