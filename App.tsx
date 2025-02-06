@@ -6,6 +6,7 @@ import HomeScreen from './src/offpista/screens/home/HomeScreen';
 import ShortsScreen from './src/offpista/screens/shorts/ShortsScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { COLORS } from './src/offpista/utils/Colors';
+import { SizeUtils } from './src/offpista/utils/SizeUtils';
 
 // Bottom Tab Navigator
 const Tab = createBottomTabNavigator();
@@ -36,9 +37,9 @@ const MyTabs = () => {
 
           return iconComponent;
         },
-        tabBarActiveTintColor: 'tomato',
+        tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: 'gray',
-        tabBarStyle: { backgroundColor: 'black', borderTopColor: COLORS.secondary }, // Set background color to black
+        tabBarStyle: { backgroundColor: 'black', borderTopColor: COLORS.secondary, height: SizeUtils.responsiveHeight(9) }, // Set background color to black
 
       })}>
       <Tab.Screen options={{headerShown: false}} name="Home" component={HomeScreen} />

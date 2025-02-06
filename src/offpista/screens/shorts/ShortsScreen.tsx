@@ -118,8 +118,7 @@ const ShortsScreen = () => {
           {item.title}
         </CustomText>
         <CustomText
-          ellipsizeMode="tail"
-          numberOfLines={2}
+        truncateAt={80}
           style={styles.description}>
           {item.description}
         </CustomText>
@@ -143,15 +142,16 @@ const ShortsScreen = () => {
       data={videos}
       renderItem={renderItem}
       keyExtractor={item => item.id}
-      pagingEnabled
-      showsVerticalScrollIndicator={false}
+      snapToInterval={height} // Ensure each video takes up full screen
       snapToAlignment="start"
       decelerationRate="fast"
-      initialNumToRender={2} // Reduce initial rendering
-      maxToRenderPerBatch={3} // Lazy loading
-      windowSize={5} // Prevent rendering too many items
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={2}
+      maxToRenderPerBatch={3}
+      windowSize={5}
       viewabilityConfig={viewabilityConfig}
-      onViewableItemsChanged={onViewableItemsChanged} // Detect visible videos
+      onViewableItemsChanged={onViewableItemsChanged}
+      removeClippedSubviews={false} // Ensures smooth rendering
     />
   );
 };
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   container: {
     width,
     height,
-    backgroundColor: 'black',
+    backgroundColor: COLORS.secondary,
   },
   video: {
     width: '100%',
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
   rightSidebar: {
     position: 'absolute',
     gap: 20,
-    right: 20,
-    bottom: 55,
+    right: 7,
+    bottom: 90,
     alignItems: 'center',
   },
   iconText: {
@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     position: 'absolute',
-    bottom: 50,
-    left: 20,
+    bottom: 90,
+    left: 10,
     right: 20,
   },
   title: {
