@@ -8,7 +8,6 @@ import { transitionConfig } from './NavigationConfig';
 import { getUniqueArray } from '../../utils/Arrays';
 
 const Stack = createNativeStackNavigator();
-
 const AuthenticatedStack = () => {
   return (
     <Stack.Navigator
@@ -28,5 +27,6 @@ const AuthenticatedStack = () => {
     </Stack.Navigator>
   );
 };
+
 
 export default AuthenticatedStack;
