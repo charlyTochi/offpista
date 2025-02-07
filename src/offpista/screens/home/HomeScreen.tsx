@@ -7,6 +7,7 @@ import {
   Dimensions,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Video from 'react-native-video';
 import CustomText from '../../components/CustomText';
@@ -17,6 +18,7 @@ import {db} from '../../firebase/firebaseConfig';
 import MovieSection from '../../../components/MovieSection';
 import CategorySection from '../../../components/CategorySection';
 import {IMAGES} from '../../utils/Images';
+import { useVideoCache } from '../../../hooks/useVideoCache';
 
 const {height, width} = Dimensions.get('window');
 interface VideoItem {
@@ -57,13 +59,13 @@ const trending = [
   {
     id: '2',
     title: 'Movie 2',
-    description: "Edge of your seat thriller",
+    description: 'Edge of your seat thriller',
     image: IMAGES.five,
   },
   {
     id: '3',
     title: 'The Boys',
-    description: "Dark take on superhero genre",
+    description: 'Dark take on superhero genre',
     image: IMAGES.six,
   },
 ];
@@ -72,19 +74,19 @@ const popular = [
   {
     id: '1',
     title: 'Better Call Saul',
-    description: "Crime and justice collide",
+    description: 'Crime and justice collide',
     image: IMAGES.seven,
   },
   {
     id: '2',
     title: 'Movie 2',
-    description: "Action packed adventure",
+    description: 'Action packed adventure',
     image: IMAGES.eight,
   },
   {
     id: '3',
     title: 'The Boys',
-    description: "Power corrupts absolutely",
+    description: 'Power corrupts absolutely',
     image: IMAGES.nine,
   },
 ];
@@ -93,19 +95,19 @@ const drama = [
   {
     id: '1',
     title: 'Better Call Saul',
-    description: "Morality meets ambition",
+    description: 'Morality meets ambition',
     image: IMAGES.ten,
   },
   {
     id: '2',
     title: 'Movie 2',
-    description: "Family secrets revealed",
+    description: 'Family secrets revealed',
     image: IMAGES.eleven,
   },
   {
     id: '3',
     title: 'The Boys',
-    description: "Behind the mask of heroism",
+    description: 'Behind the mask of heroism',
     image: IMAGES.twelve,
   },
 ];
@@ -120,6 +122,7 @@ const HomeScreen = ({navigation}: Props) => {
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
   const [, setLoading] = useState(true);
   const videoRef = useRef(null);
+  const { getVideoSource, isLoading } = useVideoCache(carouselData, activeIndex);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -162,6 +165,96 @@ const HomeScreen = ({navigation}: Props) => {
     }
   };
 
+  const renderVideo = (item: any, index: number) => {
+    const isCurrentVideo = activeIndex === index;
+    const shouldPlay = playTrailer && isCurrentVideo;
+    const isBuffering = isLoading(item?.url);
+
+    return (
+      <View style={styles.mediaContainer}>
+        {shouldPlay ? (
+          <TouchableOpacity 
+            style={styles.videoContainer} 
+            onPress={handlePlayPress}
+            activeOpacity={1}
+          >
+            <Video
+              ref={videoRef}
+              source={getVideoSource(item?.url)}
+              style={styles.video}
+              resizeMode="cover"
+              muted
+              repeat
+              bufferConfig={{
+                minBufferMs: 15000,
+                maxBufferMs: 50000,
+                bufferForPlaybackMs: 2500,
+                bufferForPlaybackAfterRebufferMs: 5000
+              }}
+              onError={(error) => {
+                console.error('Video playback error:', error);
+                // Fallback to cover image on error
+                setPlayTrailer(false);
+              }}
+              onBuffer={({isBuffering: buffering}) => {
+                // Handle buffering state if needed
+              }}
+              // Add these props for better iOS compatibility
+              ignoreSilentSwitch="ignore"
+              playInBackground={false}
+              playWhenInactive={false}
+              progressUpdateInterval={250}
+              // Add these props for better Android compatibility
+              minLoadRetryCount={5}
+              maxBitRate={2000000}
+              // Format hints
+              type="mp4" // or the appropriate format
+              headers={{
+                // Add any necessary headers for your video server
+                'Accept': 'video/mp4,video/x-m4v,video/*'
+              }}
+            />
+            {isBuffering && (
+              <View style={styles.bufferingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <ImageBackground
+            source={{uri: item?.coverImage}}
+            style={styles.videoContainer}
+            imageStyle={styles.coverImage}
+            resizeMode="cover"
+          />
+        )}
+        <View style={styles.overlayContent}>
+          <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
+          <View style={styles.bottomSection}>
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={handlePlayPress}>
+              <CustomText weightType="bold" style={styles.playText}>
+                ▶ Play
+              </CustomText>
+            </TouchableOpacity>
+            <View style={styles.paginationContainer}>
+              {carouselData.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.paginationDot,
+                    activeIndex === index && styles.activeDot,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
       <View style={styles.carouselSection}>
@@ -172,50 +265,11 @@ const HomeScreen = ({navigation}: Props) => {
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           keyExtractor={item => item.id}
-          renderItem={({item, index}) => (
-            <View style={styles.mediaContainer}>
-              {playTrailer && activeIndex === index ? (
-                <TouchableOpacity style={styles.videoContainer}>
-                  <Video
-                    ref={videoRef}
-                    source={{uri: item?.url}}
-                    style={styles.video}
-                    resizeMode="cover"
-                    muted
-                    repeat
-                  />
-                </TouchableOpacity>
-              ) : (
-                <ImageBackground
-                  source={{uri: item?.coverImage}}
-                  style={styles.videoContainer}
-                />
-              )}
-              <View style={styles.overlayContent}>
-                <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
-                <View style={styles.bottomSection}>
-                  <TouchableOpacity
-                    style={styles.playButton}
-                    onPress={handlePlayPress}>
-                    <CustomText weightType="bold" style={styles.playText}>
-                      ▶ Play
-                    </CustomText>
-                  </TouchableOpacity>
-                  <View style={styles.paginationContainer}>
-                    {carouselData.map((_, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.paginationDot,
-                          activeIndex === index && styles.activeDot,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
+          renderItem={({item, index}) => renderVideo(item, index)}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={3}
+          windowSize={5}
+          initialNumToRender={3}
         />
       </View>
 
@@ -257,23 +311,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.secondary,
     margin: 0,
+    padding: 0,
   },
   mediaContainer: {
-    width,
+    width: width,
+    height: height * 0.75,
+    backgroundColor: COLORS.secondary,
+    margin: 0,
+    padding: 0,
+    overflow: 'hidden',
   },
   videoContainer: {
-    width: '100%',
+    width: width,
     height: '100%',
+    margin: 0,
+    padding: 0,
+    overflow: 'hidden',
   },
   video: {
     width: '100%',
     height: '100%',
+    backgroundColor: COLORS.secondary,
+    margin: 0,
+    padding: 0,
   },
   overlayContent: {
     position: 'absolute',
-    width: '100%',
+    width: width,
     height: '100%',
     justifyContent: 'space-between',
+    zIndex: 1,
+    margin: 0,
+    padding: 0,
   },
   searchIcon: {
     marginTop: 30,
@@ -325,13 +394,25 @@ const styles = StyleSheet.create({
     height: 8,
   },
   carouselSection: {
-    height: height * 0.6,
     width: width,
+    height: height * 0.75,
+    margin: 0,
+    padding: 0,
   },
   moviesListContainer: {
     flex: 1,
     paddingBottom: 20,
     marginTop: 15,
+  },
+  bufferingContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverImage: {
+    // Add any necessary styles for the cover image
   },
 });
 
