@@ -43,7 +43,11 @@ const movies = [
   },
 ];
 
-const HomeScreen = () => {
+interface Props {
+  navigation: any;
+}
+
+const HomeScreen = ({ navigation }: Props) => {
   const [playTrailer, setPlayTrailer] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
@@ -78,7 +82,9 @@ const HomeScreen = () => {
   }, [activeIndex]);
 
   const handlePlayPress = () => {
-    console.log('Play button pressed');
+    navigation.navigate('Shorts', {
+      initialVideoId: carouselData[activeIndex]?.id
+    });
   };
 
   const handleScroll = (event: {nativeEvent: {contentOffset: {x: number}}}) => {
@@ -122,7 +128,9 @@ const HomeScreen = () => {
             <View style={styles.overlayContent}>
               <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
               <View style={styles.bottomSection}>
-                <TouchableOpacity style={styles.playButton}>
+                <TouchableOpacity 
+                  style={styles.playButton}
+                  onPress={handlePlayPress}>
                   <CustomText weightType="bold" style={styles.playText}>
                     ▶ Play
                   </CustomText>
@@ -169,7 +177,6 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     width,
-    height: height * 0.6,
   },
   videoContainer: {
     width: '100%',

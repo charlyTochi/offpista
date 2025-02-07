@@ -22,11 +22,20 @@ interface VideoItem {
   description: string;
 }
 
-const ShortsScreen = () => {
+interface Props {
+  route: {
+    params?: {
+      initialVideoId?: string;
+    };
+  };
+}
+
+const ShortsScreen = ({ route }: Props) => {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const videoRefs = useRef<Array<any>>([]);
+  const flatListRef = useRef<FlatList>(null);
 
   // Fetch videos from Firebase
   useEffect(() => {
@@ -38,6 +47,22 @@ const ShortsScreen = () => {
           ...doc.data(),
         })) as VideoItem[];
         setVideos(fetchedVideos);
+        // If initialVideoId is provided, find its index and scroll to it
+        if (route.params?.initialVideoId) {
+          const initialIndex = fetchedVideos.findIndex(
+            video => video.id === route.params?.initialVideoId
+          );
+          if (initialIndex !== -1) {
+            // Set a small timeout to ensure the FlatList is rendered
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: initialIndex,
+                animated: false,
+              });
+              setPlayingIndex(initialIndex);
+            }, 100);
+          }
+        }
       } catch (error) {
         console.error('Error fetching videos:', error);
       } finally {
@@ -46,7 +71,7 @@ const ShortsScreen = () => {
     };
 
     fetchVideos();
-  }, []);
+  }, [route.params?.initialVideoId]);
 
   // Detect visible items & update playing video
   const onViewableItemsChanged = useRef(
@@ -139,19 +164,29 @@ const ShortsScreen = () => {
 
   return (
     <FlatList
+      ref={flatListRef}
       data={videos}
       renderItem={renderItem}
       keyExtractor={item => item.id}
-      snapToInterval={height} // Ensure each video takes up full screen
+      snapToInterval={height}
       snapToAlignment="start"
       decelerationRate="fast"
       showsVerticalScrollIndicator={false}
-      initialNumToRender={2}
+      initialNumToRender={3}
       maxToRenderPerBatch={3}
       windowSize={5}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
-      removeClippedSubviews={false} // Ensures smooth rendering
+      removeClippedSubviews={false}
+      onScrollToIndexFailed={info => {
+        const wait = new Promise(resolve => setTimeout(resolve, 500));
+        wait.then(() => {
+          flatListRef.current?.scrollToIndex({
+            index: info.index,
+            animated: false,
+          });
+        });
+      }}
     />
   );
 };
