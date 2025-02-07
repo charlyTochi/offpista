@@ -7,6 +7,8 @@ import {
   Dimensions,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Video from 'react-native-video';
 import CustomText from '../../components/CustomText';
@@ -119,7 +121,9 @@ const HomeScreen = ({navigation}: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
   const [, setLoading] = useState(true);
-  const videoRef = useRef(null);
+  const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
+  const videoRefs = useRef<{[key: string]: any}>({});
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -142,10 +146,25 @@ const HomeScreen = ({navigation}: Props) => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPlayTrailer(true);
-    }, 3000);
-    return () => clearTimeout(timer);
+    let timer: NodeJS.Timeout;
+
+    if (initialLoadRef.current) {
+      // On initial load, start timer immediately
+      timer = setTimeout(() => {
+        setPlayTrailer(true);
+      }, 3000);
+      initialLoadRef.current = false;
+    } else {
+      // For subsequent slides, reset video state
+      setPlayTrailer(false);
+      timer = setTimeout(() => {
+        setPlayTrailer(true);
+      }, 3000);
+    }
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [activeIndex]);
 
   const handlePlayPress = () => {
@@ -158,36 +177,66 @@ const HomeScreen = ({navigation}: Props) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     if (index !== activeIndex) {
       setActiveIndex(index);
-      setPlayTrailer(false);
+      
+      // Cleanup videos
+      Object.entries(videoRefs.current).forEach(([id, ref]) => {
+        if (ref) {
+          const videoIndex = carouselData.findIndex(item => item.id === id);
+          if (Math.abs(videoIndex - index) > 1) {
+            ref.seek(0);
+          }
+        }
+      });
     }
   };
 
-  const renderVideo = (item: any, index: number) => {
+  const renderVideo = (item: VideoItem, index: number) => {
     const isCurrentVideo = activeIndex === index;
     const shouldPlay = playTrailer && isCurrentVideo;
+    const shouldLoad = Math.abs(activeIndex - index) <= 1;
 
     return (
       <View style={styles.mediaContainer}>
-        {shouldPlay ? (
+        {shouldPlay && shouldLoad ? (
           <TouchableOpacity
             style={styles.videoContainer}
             onPress={handlePlayPress}
             activeOpacity={1}>
             <Video
-              ref={videoRef}
+              ref={ref => (videoRefs.current[item.id] = ref)}
               source={{uri: item?.url}}
               style={styles.video}
               resizeMode="cover"
               muted
-              repeat
+              repeat={false}  // Changed to false to prevent looping
+              playInBackground={false}
+              playWhenInactive={false}
+              onBuffer={({isBuffering: buffering}) => {
+                setIsBuffering(prev => ({...prev, [item.id]: buffering}));
+              }}
               bufferConfig={{
                 minBufferMs: 15000,
                 maxBufferMs: 50000,
                 bufferForPlaybackMs: 2500,
                 bufferForPlaybackAfterRebufferMs: 5000,
               }}
-              onError={error => console.error('Video playback error:', error)}
+              maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
+              onLoadStart={() => {
+                setIsBuffering(prev => ({...prev, [item.id]: true}));
+              }}
+              onLoad={() => {
+                setIsBuffering(prev => ({...prev, [item.id]: false}));
+              }}
+              onEnd={() => {
+                setPlayTrailer(false);  // Stop playing when video ends
+              }}
+              onError={error => console.warn('Video error:', error)}
             />
+            {isBuffering[item.id] && (
+              <View style={styles.bufferingContainer}>
+                <ActivityIndicator color="white" size="large" />
+              </View>
+            )}
           </TouchableOpacity>
         ) : (
           <ImageBackground
@@ -235,10 +284,11 @@ const HomeScreen = ({navigation}: Props) => {
           onScroll={handleScroll}
           keyExtractor={item => item.id}
           renderItem={({item, index}) => renderVideo(item, index)}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={3}
-          windowSize={5}
-          initialNumToRender={3}
+          removeClippedSubviews={Platform.OS === 'android'}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          initialNumToRender={2}
+          onScrollToIndexFailed={() => {}}
         />
       </View>
 
@@ -296,13 +346,12 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
     overflow: 'hidden',
+    backgroundColor: COLORS.secondary,
   },
   video: {
     width: '100%',
     height: '100%',
     backgroundColor: COLORS.secondary,
-    margin: 0,
-    padding: 0,
   },
   overlayContent: {
     position: 'absolute',
@@ -374,11 +423,10 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   bufferingContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   coverImage: {
     // Add any necessary styles for the cover image

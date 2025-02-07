@@ -30,7 +30,9 @@ const MovieSection = ({
         <CustomText weightType="bold" style={styles.sectionTitle}>
           {title}
         </CustomText>
-        {ICONS.arrowIcon}
+        <View style={{marginRight:15}}>
+          {ICONS.arrowIcon}
+        </View>
       </View>
       <FlatList
         data={movies}
