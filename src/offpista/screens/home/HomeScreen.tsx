@@ -4,9 +4,9 @@ import {
   ImageBackground,
   TouchableOpacity,
   FlatList,
-  Image,
   Dimensions,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import Video from 'react-native-video';
 import CustomText from '../../components/CustomText';
@@ -14,32 +14,99 @@ import {ICONS} from '../../utils/Icons';
 import {COLORS} from '../../utils/Colors';
 import {getDocs, collection} from 'firebase/firestore';
 import {db} from '../../firebase/firebaseConfig';
+import MovieSection from '../../../components/MovieSection';
+import CategorySection from '../../../components/CategorySection';
+import {IMAGES} from '../../utils/Images';
 
 const {height, width} = Dimensions.get('window');
 interface VideoItem {
   id: string;
   url: string;
   coverImage: string;
+  description: string;
 }
 
 const movies = [
   {
     id: '1',
     title: 'Better Call Saul',
-    image:
-      'https://097d0e9f.customer.static.core.one.accedo.tv/097d0e9f2de0f04b/image/collection/STSU/backdrop/landscape/3840x2160_heroh_io?locale=en&t=resize%3Aw1920%7Cgradient%3Aup%2C0F001F%2C17%7Cgradient%3Aright%2C0F001F%2C100%7Ccrop%3Alandscape',
+    description: "A lawyer's twisted path to success",
+    image: IMAGES.one,
   },
   {
     id: '2',
     title: 'Movie 2',
-    image:
-      'https://097d0e9f.customer.static.core.one.accedo.tv/097d0e9f2de0f04b/image/collection/STSU/backdrop/landscape/3840x2160_heroh_io?locale=en&t=resize%3Aw1920%7Cgradient%3Aup%2C0F001F%2C17%7Cgradient%3Aright%2C0F001F%2C100%7Ccrop%3Alandscape',
+    description: 'Journey into the unknown',
+    image: IMAGES.two,
   },
   {
     id: '3',
     title: 'The Boys',
-    image:
-      'https://097d0e9f.customer.static.core.one.accedo.tv/097d0e9f2de0f04b/image/collection/STSU/backdrop/landscape/3840x2160_heroh_io?locale=en&t=resize%3Aw1920%7Cgradient%3Aup%2C0F001F%2C17%7Cgradient%3Aright%2C0F001F%2C100%7Ccrop%3Alandscape',
+    description: "Heroes aren't always heroic",
+    image: IMAGES.three,
+  },
+];
+
+const trending = [
+  {
+    id: '1',
+    title: 'Better Call Saul',
+    description: "Breaking bad's brilliant spin-off",
+    image: IMAGES.four,
+  },
+  {
+    id: '2',
+    title: 'Movie 2',
+    description: "Edge of your seat thriller",
+    image: IMAGES.five,
+  },
+  {
+    id: '3',
+    title: 'The Boys',
+    description: "Dark take on superhero genre",
+    image: IMAGES.six,
+  },
+];
+
+const popular = [
+  {
+    id: '1',
+    title: 'Better Call Saul',
+    description: "Crime and justice collide",
+    image: IMAGES.seven,
+  },
+  {
+    id: '2',
+    title: 'Movie 2',
+    description: "Action packed adventure",
+    image: IMAGES.eight,
+  },
+  {
+    id: '3',
+    title: 'The Boys',
+    description: "Power corrupts absolutely",
+    image: IMAGES.nine,
+  },
+];
+
+const drama = [
+  {
+    id: '1',
+    title: 'Better Call Saul',
+    description: "Morality meets ambition",
+    image: IMAGES.ten,
+  },
+  {
+    id: '2',
+    title: 'Movie 2',
+    description: "Family secrets revealed",
+    image: IMAGES.eleven,
+  },
+  {
+    id: '3',
+    title: 'The Boys',
+    description: "Behind the mask of heroism",
+    image: IMAGES.twelve,
   },
 ];
 
@@ -47,7 +114,7 @@ interface Props {
   navigation: any;
 }
 
-const HomeScreen = ({ navigation }: Props) => {
+const HomeScreen = ({navigation}: Props) => {
   const [playTrailer, setPlayTrailer] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
@@ -83,7 +150,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   const handlePlayPress = () => {
     navigation.navigate('Shorts', {
-      initialVideoId: carouselData[activeIndex]?.id
+      initialVideoId: carouselData[activeIndex]?.id,
     });
   };
 
@@ -96,77 +163,92 @@ const HomeScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={carouselData}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        keyExtractor={item => item.id}
-        renderItem={({item, index}) => (
-          <View style={styles.mediaContainer}>
-            {playTrailer && activeIndex === index ? (
-              <TouchableOpacity
-                onPress={handlePlayPress}
-                style={styles.videoContainer}>
-                <Video
-                  ref={videoRef}
-                  source={{uri: item?.url}}
-                  style={styles.video}
-                  resizeMode="cover"
-                  muted
-                  repeat
-                />
-              </TouchableOpacity>
-            ) : (
-              <ImageBackground
-                source={{uri: item?.coverImage}}
-                style={styles.videoContainer}
-              />
-            )}
-            <View style={styles.overlayContent}>
-              <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
-              <View style={styles.bottomSection}>
-                <TouchableOpacity 
-                  style={styles.playButton}
-                  onPress={handlePlayPress}>
-                  <CustomText weightType="bold" style={styles.playText}>
-                    ▶ Play
-                  </CustomText>
+    <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
+      <View style={styles.carouselSection}>
+        <FlatList
+          data={carouselData}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          keyExtractor={item => item.id}
+          renderItem={({item, index}) => (
+            <View style={styles.mediaContainer}>
+              {playTrailer && activeIndex === index ? (
+                <TouchableOpacity style={styles.videoContainer}>
+                  <Video
+                    ref={videoRef}
+                    source={{uri: item?.url}}
+                    style={styles.video}
+                    resizeMode="cover"
+                    muted
+                    repeat
+                  />
                 </TouchableOpacity>
-                <View style={styles.paginationContainer}>
-                  {carouselData.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.paginationDot,
-                        activeIndex === index && styles.activeDot,
-                      ]}
-                    />
-                  ))}
+              ) : (
+                <ImageBackground
+                  source={{uri: item?.coverImage}}
+                  style={styles.videoContainer}
+                />
+              )}
+              <View style={styles.overlayContent}>
+                <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
+                <View style={styles.bottomSection}>
+                  <TouchableOpacity
+                    style={styles.playButton}
+                    onPress={handlePlayPress}>
+                    <CustomText weightType="bold" style={styles.playText}>
+                      ▶ Play
+                    </CustomText>
+                  </TouchableOpacity>
+                  <View style={styles.paginationContainer}>
+                    {carouselData.map((_, index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.paginationDot,
+                          activeIndex === index && styles.activeDot,
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
-        )}
-      />
-      <View style={styles.moviesSection}>
-        <CustomText weightType="bold" style={styles.sectionTitle}>
-          Continue Watching
-        </CustomText>
-        <FlatList
-          data={movies}
-          horizontal
-          keyExtractor={item => item.id}
-          renderItem={({item}) => (
-            <View style={styles.movieContainer}>
-              <Image source={{uri: item.image}} style={styles.movieImage} />
             </View>
           )}
         />
       </View>
-    </View>
+
+      <View style={styles.moviesListContainer}>
+        <MovieSection
+          title="Continue Watching"
+          movies={movies}
+          showDescription={true}
+        />
+        <MovieSection
+          title="Most Trending"
+          movies={trending}
+          showDescription={true}
+        />
+        <CategorySection />
+        <MovieSection
+          title="Popular Movies"
+          movies={popular}
+          showDescription={true}
+        />
+        <MovieSection title="Drama" movies={movies} showDescription={true} />
+        <MovieSection
+          title="Romance"
+          movies={trending}
+          showDescription={true}
+        />
+        <MovieSection
+          title="Documentary"
+          movies={drama}
+          showDescription={true}
+        />
+      </View>
+    </ScrollView>
   );
 };
 
@@ -174,6 +256,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.secondary,
+    margin: 0,
   },
   mediaContainer: {
     width,
@@ -241,24 +324,14 @@ const styles = StyleSheet.create({
     width: 16,
     height: 8,
   },
-  moviesSection: {
-    height: height * 0.3,
-    padding: 10,
-    paddingTop: 15,
+  carouselSection: {
+    height: height * 0.6,
+    width: width,
   },
-  sectionTitle: {
-    color: COLORS.white,
-    fontSize: 21,
-    marginBottom: 10,
-  },
-  movieContainer: {
-    marginRight: 15,
-    width: 120,
-  },
-  movieImage: {
-    width: 120,
-    height: 160,
-    borderRadius: 10,
+  moviesListContainer: {
+    flex: 1,
+    paddingBottom: 20,
+    marginTop: 15,
   },
 });
 

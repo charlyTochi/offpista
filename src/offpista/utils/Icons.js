@@ -1,4 +1,5 @@
 /* eslint-disable react/react-in-jsx-scope */
+import ArrowRightIcon from '../assets/svg/ArrowRightIcon';
 import FavoriteIcon from '../assets/svg/FavoriteIcon';
 import ForwardIcon from '../assets/svg/ForwardIcon';
 import HomeIcon from '../assets/svg/HomeIcon';
@@ -16,5 +17,6 @@ export const ICONS = {
   searchIcon: <SearchIcon />,
   forwardIcon: <ForwardIcon />,
   loveIcon: <LoveIcon />,
-  favoriteIcon: <FavoriteIcon />
+  favoriteIcon: <FavoriteIcon />,
+  arrowIcon: <ArrowRightIcon />,
 };
