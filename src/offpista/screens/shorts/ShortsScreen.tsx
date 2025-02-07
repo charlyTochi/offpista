@@ -143,7 +143,7 @@ const ShortsScreen = ({ route }: Props) => {
           {item.title}
         </CustomText>
         <CustomText
-        truncateAt={80}
+        truncateAt={30}
           style={styles.description}>
           {item.description}
         </CustomText>

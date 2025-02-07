@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   sectionTitle: {
     color: COLORS.white,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   movieDesc: {
     fontSize: 14,
     color: COLORS.white,
-    marginTop: 8,
+    marginTop: 4,
   },
   movieImage: {
     width: 120,
