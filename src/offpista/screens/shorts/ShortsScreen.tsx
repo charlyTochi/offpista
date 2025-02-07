@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Video from 'react-native-video';
 import {collection, getDocs} from 'firebase/firestore';
@@ -30,12 +31,14 @@ interface Props {
   };
 }
 
-const ShortsScreen = ({ route }: Props) => {
+const ShortsScreen = ({route}: Props) => {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const videoRefs = useRef<Array<any>>([]);
   const flatListRef = useRef<FlatList>(null);
+  const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
+  const currentlyPlayingRef = useRef<number | null>(null);
 
   // Fetch videos from Firebase
   useEffect(() => {
@@ -50,7 +53,7 @@ const ShortsScreen = ({ route }: Props) => {
         // If initialVideoId is provided, find its index and scroll to it
         if (route.params?.initialVideoId) {
           const initialIndex = fetchedVideos.findIndex(
-            video => video.id === route.params?.initialVideoId
+            video => video.id === route.params?.initialVideoId,
           );
           if (initialIndex !== -1) {
             // Set a small timeout to ensure the FlatList is rendered
@@ -81,78 +84,112 @@ const ShortsScreen = ({ route }: Props) => {
         typeof viewableItems[0].index === 'number'
       ) {
         const newIndex = viewableItems[0].index;
-
-        if (newIndex !== playingIndex) {
-          // Reset the previous video
-          if (playingIndex !== null && videoRefs.current[playingIndex]) {
-            videoRefs.current[playingIndex].seek(0); // Restart previous video
-          }
-
-          // Update playing index
+        if (currentlyPlayingRef.current !== newIndex) {
+          currentlyPlayingRef.current = newIndex;
           setPlayingIndex(newIndex);
 
-          // Reset the new video
-          setTimeout(() => {
-            if (videoRefs.current[newIndex]) {
-              videoRefs.current[newIndex].seek(0); // Restart new video
+          // Preload the next video
+          if (newIndex + 1 < videos.length && videoRefs.current[newIndex + 1]) {
+            videoRefs.current[newIndex + 1].seek(0);
+          }
+
+          // Cleanup previous videos
+          Object.keys(videoRefs.current).forEach(key => {
+            const index = parseInt(key, 10);
+            if (Math.abs(index - newIndex) > 1 && videoRefs.current[index]) {
+              videoRefs.current[index].seek(0);
             }
-          }, 100); // Delay ensures ref is assigned before seeking
+          });
         }
       }
     },
   ).current;
 
   const viewabilityConfig = useRef({
-    viewAreaCoveragePercentThreshold: 50,
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 100,
   }).current;
 
-  const renderItem = ({item, index}: {item: VideoItem; index: number}) => (
-    <View style={styles.container}>
-      {/* Video Background */}
+  const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
+    const isCurrentlyPlaying = playingIndex === index;
+    const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1;
 
-      <Video
-        ref={ref => (videoRefs.current[index] = ref)}
-        source={{uri: item?.url}}
-        style={styles.video}
-        resizeMode="cover"
-        repeat
-        playInBackground={false}
-        playWhenInactive={false}
-        paused={playingIndex !== index}
-      />
+    return (
+      <View style={styles.container}>
+        <View style={styles.videoContainer}>
+          {shouldLoad && (
+            <Video
+              ref={ref => (videoRefs.current[index] = ref)}
+              source={{uri: item?.url}}
+              style={styles.video}
+              resizeMode="contain"
+              repeat
+              playInBackground={false}
+              playWhenInactive={false}
+              paused={!isCurrentlyPlaying}
+              onBuffer={({isBuffering}) => {
+                setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
+              }}
+              onError={error => console.warn('Video error:', error)}
+              posterResizeMode="contain"
+              bufferConfig={{
+                minBufferMs: 15000,
+                maxBufferMs: 50000,
+                bufferForPlaybackMs: 2500,
+                bufferForPlaybackAfterRebufferMs: 5000,
+              }}
+              maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
+              onLoadStart={() => {
+                setIsBuffering(prev => ({...prev, [item.id]: true}));
+              }}
+              onLoad={() => {
+                setIsBuffering(prev => ({...prev, [item.id]: false}));
+              }}
+            />
+          )}
 
-      {/* Right Sidebar Icons */}
-      <View style={styles.rightSidebar}>
-        <TouchableOpacity>
-          {ICONS.loveIcon}
-          <CustomText style={styles.iconText}>11.5K</CustomText>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          {ICONS.forwardIcon}
-          <CustomText style={styles.iconText}>312</CustomText>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          {ICONS.favoriteIcon}
-          <CustomText style={styles.iconText}>20</CustomText>
-        </TouchableOpacity>
+          {isBuffering[item.id] && (
+            <View style={styles.bufferingContainer}>
+              <ActivityIndicator color="white" size="large" />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.overlay}>
+          {/* Right Sidebar Icons */}
+          <View style={styles.rightSidebar}>
+            <TouchableOpacity style={styles.iconButton}>
+              {ICONS.loveIcon}
+              <CustomText style={styles.iconText}>11.5K</CustomText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              {ICONS.forwardIcon}
+              <CustomText style={styles.iconText}>312</CustomText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              {ICONS.favoriteIcon}
+              <CustomText style={styles.iconText}>20</CustomText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom Section */}
+          <View style={styles.bottomSection}>
+            <CustomText weightType="bold" style={styles.title}>
+              {item.title}
+            </CustomText>
+            <CustomText truncateAt={60} numberOfLines={3} style={styles.description}>
+              {item.description}
+            </CustomText>
+            <TouchableOpacity style={styles.watchButton}>
+              <CustomText style={styles.watchButtonText}>
+                ▶ Watch Now
+              </CustomText>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-
-      {/* Bottom Section */}
-      <View style={styles.bottomSection}>
-        <CustomText weightType="bold" style={styles.title}>
-          {item.title}
-        </CustomText>
-        <CustomText
-        truncateAt={30}
-          style={styles.description}>
-          {item.description}
-        </CustomText>
-        <TouchableOpacity style={styles.watchButton}>
-          <CustomText style={styles.watchButtonText}>▶ Watch Now</CustomText>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -172,12 +209,12 @@ const ShortsScreen = ({ route }: Props) => {
       snapToAlignment="start"
       decelerationRate="fast"
       showsVerticalScrollIndicator={false}
-      initialNumToRender={3}
-      maxToRenderPerBatch={3}
-      windowSize={5}
+      initialNumToRender={2}
+      maxToRenderPerBatch={2}
+      windowSize={3}
       viewabilityConfig={viewabilityConfig}
       onViewableItemsChanged={onViewableItemsChanged}
-      removeClippedSubviews={false}
+      removeClippedSubviews={Platform.OS === 'android'}
       onScrollToIndexFailed={info => {
         const wait = new Promise(resolve => setTimeout(resolve, 500));
         wait.then(() => {
@@ -197,17 +234,30 @@ const styles = StyleSheet.create({
     height,
     backgroundColor: COLORS.secondary,
   },
+  videoContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
   video: {
+    flex: 1,
     width: '100%',
     height: '100%',
-    position: 'absolute',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   rightSidebar: {
     position: 'absolute',
-    gap: 20,
-    right: 7,
-    bottom: 90,
+    right: 10,
+    bottom: 100,
     alignItems: 'center',
+    zIndex: 2,
+  },
+  iconButton: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   iconText: {
     color: COLORS.white,
@@ -219,29 +269,42 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 90,
     left: 10,
-    right: 20,
+    right: 70, // Give space for the right sidebar
+    zIndex: 1,
   },
   title: {
     color: COLORS.white,
     fontSize: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
   },
   description: {
     color: COLORS.white,
     fontSize: 14,
     marginTop: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
   },
   watchButton: {
     backgroundColor: '#F30745',
     paddingVertical: 10,
     borderRadius: 8,
     marginTop: 10,
-    width: width * 0.6,
+    width: width * 0.5,
     alignItems: 'center',
   },
   watchButtonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  bufferingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   loadingContainer: {
     flex: 1,

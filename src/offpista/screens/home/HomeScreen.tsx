@@ -7,7 +7,6 @@ import {
   Dimensions,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import Video from 'react-native-video';
 import CustomText from '../../components/CustomText';
@@ -18,7 +17,6 @@ import {db} from '../../firebase/firebaseConfig';
 import MovieSection from '../../../components/MovieSection';
 import CategorySection from '../../../components/CategorySection';
 import {IMAGES} from '../../utils/Images';
-import { useVideoCache } from '../../../hooks/useVideoCache';
 
 const {height, width} = Dimensions.get('window');
 interface VideoItem {
@@ -122,7 +120,6 @@ const HomeScreen = ({navigation}: Props) => {
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
   const [, setLoading] = useState(true);
   const videoRef = useRef(null);
-  const { getVideoSource, isLoading } = useVideoCache(carouselData, activeIndex);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -168,19 +165,17 @@ const HomeScreen = ({navigation}: Props) => {
   const renderVideo = (item: any, index: number) => {
     const isCurrentVideo = activeIndex === index;
     const shouldPlay = playTrailer && isCurrentVideo;
-    const isBuffering = isLoading(item?.url);
 
     return (
       <View style={styles.mediaContainer}>
         {shouldPlay ? (
-          <TouchableOpacity 
-            style={styles.videoContainer} 
+          <TouchableOpacity
+            style={styles.videoContainer}
             onPress={handlePlayPress}
-            activeOpacity={1}
-          >
+            activeOpacity={1}>
             <Video
               ref={videoRef}
-              source={getVideoSource(item?.url)}
+              source={{uri: item?.url}}
               style={styles.video}
               resizeMode="cover"
               muted
@@ -189,36 +184,10 @@ const HomeScreen = ({navigation}: Props) => {
                 minBufferMs: 15000,
                 maxBufferMs: 50000,
                 bufferForPlaybackMs: 2500,
-                bufferForPlaybackAfterRebufferMs: 5000
+                bufferForPlaybackAfterRebufferMs: 5000,
               }}
-              onError={(error) => {
-                console.error('Video playback error:', error);
-                // Fallback to cover image on error
-                setPlayTrailer(false);
-              }}
-              onBuffer={({isBuffering: buffering}) => {
-                // Handle buffering state if needed
-              }}
-              // Add these props for better iOS compatibility
-              ignoreSilentSwitch="ignore"
-              playInBackground={false}
-              playWhenInactive={false}
-              progressUpdateInterval={250}
-              // Add these props for better Android compatibility
-              minLoadRetryCount={5}
-              maxBitRate={2000000}
-              // Format hints
-              type="mp4" // or the appropriate format
-              headers={{
-                // Add any necessary headers for your video server
-                'Accept': 'video/mp4,video/x-m4v,video/*'
-              }}
+              onError={error => console.error('Video playback error:', error)}
             />
-            {isBuffering && (
-              <View style={styles.bufferingContainer}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-              </View>
-            )}
           </TouchableOpacity>
         ) : (
           <ImageBackground
