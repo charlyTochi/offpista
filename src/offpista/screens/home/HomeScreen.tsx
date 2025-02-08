@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import Video from 'react-native-video';
 import CustomText from '../../components/CustomText';
@@ -161,9 +162,35 @@ const HomeScreen = ({navigation}: Props) => {
     return () => clearTimeout(timer);
   }, [activeIndex]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setPlayTrailer(false);
+      Object.values(videoRefs.current).forEach(ref => {
+        if (ref) {
+          ref.seek(0);
+        }
+      });
+      currentTimeRef.current = 0;
+      
+      StatusBar.setHidden(false);
+      
+      setTimeout(() => {
+        setPlayTrailer(true);
+      }, 500);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const handlePlayPress = () => {
     const currentVideo = carouselData[activeIndex];
     if (!currentVideo) return;
+
+    setPlayTrailer(false);
+    
+    if (videoRefs.current[currentVideo.id]) {
+      videoRefs.current[currentVideo.id].seek(0);
+    }
 
     navigation.navigate('Shorts', {
       videoId: currentVideo.id,

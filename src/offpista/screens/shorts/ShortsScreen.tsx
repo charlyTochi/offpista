@@ -7,6 +7,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import Video from 'react-native-video';
 import {collection, getDocs} from 'firebase/firestore';
@@ -100,6 +101,23 @@ const ShortsScreen = ({route}: Props) => {
 
     fetchVideos();
   }, [route.params?.videoId]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    // Hide status bar when entering shorts
+    StatusBar.setHidden(true);
+    
+    return () => {
+      // Show status bar when leaving shorts
+      StatusBar.setHidden(false);
+      // Stop all videos when unmounting
+      videoRefs.current.forEach(ref => {
+        if (ref) {
+          ref.seek(0);
+        }
+      });
+    };
+  }, []);
 
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;
