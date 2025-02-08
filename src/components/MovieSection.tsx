@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, FlatList, Image, StyleSheet, Dimensions} from 'react-native';
+import {View, FlatList, Image, StyleSheet, Dimensions, TouchableOpacity} from 'react-native';
 import CustomText from '../offpista/components/CustomText';
 import {ICONS} from '../offpista/utils/Icons';
 import {COLORS} from '../offpista/utils/Colors';
@@ -26,21 +26,21 @@ const MovieSection = ({
 }: MovieSectionProps) => {
   return (
     <View style={styles.moviesSection}>
-      <View style={styles.sectionHeader}>
+      <TouchableOpacity style={styles.sectionHeader}>
         <CustomText weightType="bold" style={styles.sectionTitle}>
           {title}
         </CustomText>
-        <View style={{marginRight:15}}>
+        <View style={{marginRight: 15}}>
           {ICONS.arrowIcon}
         </View>
-      </View>
+      </TouchableOpacity>
       <FlatList
         data={movies}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={item => item.id}
         renderItem={({item}) => (
-          <View style={styles.movieContainer}>
+          <TouchableOpacity style={styles.movieContainer}>
             <Image source={item.image} style={styles.movieImage} />
             {showDescription && (
               <>
@@ -50,7 +50,7 @@ const MovieSection = ({
                 </CustomText>
               </>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
     </View>

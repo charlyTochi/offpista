@@ -21,6 +21,9 @@ interface VideoItem {
   url: string;
   title: string;
   description: string;
+  likes: string;
+  forward_count: number
+  favorite: number
 }
 
 interface Props {
@@ -127,6 +130,7 @@ const ShortsScreen = ({route}: Props) => {
               playInBackground={false}
               playWhenInactive={false}
               paused={!isCurrentlyPlaying}
+              // eslint-disable-next-line @typescript-eslint/no-shadow
               onBuffer={({isBuffering}) => {
                 setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
               }}
@@ -160,15 +164,15 @@ const ShortsScreen = ({route}: Props) => {
           <View style={styles.rightSidebar}>
             <TouchableOpacity style={styles.iconButton}>
               {ICONS.loveIcon}
-              <CustomText style={styles.iconText}>11.5K</CustomText>
+              <CustomText style={styles.iconText}>{item.likes}</CustomText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity style={styles.favIcon}>
               {ICONS.forwardIcon}
-              <CustomText style={styles.iconText}>312</CustomText>
+              <CustomText style={styles.iconText}>{item.favorite}</CustomText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity style={styles.fav2Icon}>
               {ICONS.favoriteIcon}
-              <CustomText style={styles.iconText}>20</CustomText>
+              <CustomText style={styles.iconText}>{item.forward_count}</CustomText>
             </TouchableOpacity>
           </View>
 
@@ -251,13 +255,21 @@ const styles = StyleSheet.create({
   rightSidebar: {
     position: 'absolute',
     right: 10,
-    bottom: 100,
+    bottom: 90,
     alignItems: 'center',
     zIndex: 2,
   },
   iconButton: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  favIcon: {
+    alignItems: 'center',
+  },
+  fav2Icon: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 15,
   },
   iconText: {
     color: COLORS.white,

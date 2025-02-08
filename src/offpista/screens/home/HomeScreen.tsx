@@ -32,19 +32,19 @@ const movies = [
   {
     id: '1',
     title: 'Better Call Saul',
-    description: "A lawyer's twisted path to success",
+    description: "A lawyer's twisted",
     image: IMAGES.one,
   },
   {
     id: '2',
     title: 'Movie 2',
-    description: 'Journey into the unknown',
+    description: 'Journey the unknown',
     image: IMAGES.two,
   },
   {
     id: '3',
     title: 'The Boys',
-    description: "Heroes aren't always heroic",
+    description: "Heroes aren't  heroic",
     image: IMAGES.three,
   },
 ];
@@ -53,19 +53,19 @@ const trending = [
   {
     id: '1',
     title: 'Better Call Saul',
-    description: "Breaking bad's brilliant spin-off",
+    description: "Breaking bad's ",
     image: IMAGES.four,
   },
   {
     id: '2',
     title: 'Movie 2',
-    description: 'Edge of your seat thriller',
+    description: 'Edge of your seat',
     image: IMAGES.five,
   },
   {
     id: '3',
     title: 'The Boys',
-    description: 'Dark take on superhero genre',
+    description: 'Dark take on superhero',
     image: IMAGES.six,
   },
 ];
@@ -249,6 +249,11 @@ const HomeScreen = ({navigation}: Props) => {
         <View style={styles.overlayContent}>
           <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
           <View style={styles.bottomSection}>
+          <View style={styles.tagsContainer}>
+              <CustomText style={styles.tag}>New</CustomText>
+              <CustomText style={styles.tag}>Detective</CustomText>
+              <CustomText style={styles.tag}>Crime</CustomText>
+            </View>
             <TouchableOpacity
               style={styles.playButton}
               onPress={handlePlayPress}>
@@ -376,16 +381,17 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 15,
     borderRadius: 8,
+    marginBottom: 15,
   },
   tagsContainer: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   tag: {
     color: COLORS.ash,
     borderRadius: 8,
     padding: 7,
-    marginRight: 5,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: COLORS.ash,
   },
