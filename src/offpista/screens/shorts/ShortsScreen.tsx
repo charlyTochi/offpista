@@ -30,6 +30,7 @@ interface Props {
   route: {
     params?: {
       initialVideoId?: string;
+      initialProgress?: number;
     };
   };
 }
@@ -42,6 +43,8 @@ const ShortsScreen = ({route}: Props) => {
   const flatListRef = useRef<FlatList>(null);
   const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
   const currentlyPlayingRef = useRef<number | null>(null);
+  const initialProgressRef = useRef(route.params?.initialProgress || 0);
+  const hasSetInitialProgress = useRef(false);
 
   // Fetch videos from Firebase
   useEffect(() => {
@@ -116,6 +119,7 @@ const ShortsScreen = ({route}: Props) => {
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;
     const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1;
+    const isInitialVideo = item.id === route.params?.initialVideoId;
 
     return (
       <View style={styles.container}>
@@ -130,6 +134,18 @@ const ShortsScreen = ({route}: Props) => {
               playInBackground={false}
               playWhenInactive={false}
               paused={!isCurrentlyPlaying}
+              onLoad={() => {
+                // Seek to initial position for the initial video
+                if (
+                  isInitialVideo &&
+                  !hasSetInitialProgress.current &&
+                  initialProgressRef.current > 0
+                ) {
+                  videoRefs.current[index]?.seek(initialProgressRef.current);
+                  hasSetInitialProgress.current = true;
+                }
+                setIsBuffering(prev => ({...prev, [item.id]: false}));
+              }}
               // eslint-disable-next-line @typescript-eslint/no-shadow
               onBuffer={({isBuffering}) => {
                 setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
@@ -146,9 +162,7 @@ const ShortsScreen = ({route}: Props) => {
               onLoadStart={() => {
                 setIsBuffering(prev => ({...prev, [item.id]: true}));
               }}
-              onLoad={() => {
-                setIsBuffering(prev => ({...prev, [item.id]: false}));
-              }}
+              muted={false}
             />
           )}
 

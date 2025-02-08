@@ -124,6 +124,7 @@ const HomeScreen = ({navigation}: Props) => {
   const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
   const videoRefs = useRef<{[key: string]: any}>({});
   const initialLoadRef = useRef(true);
+  const [currentVideoProgress, setCurrentVideoProgress] = useState(0);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -167,9 +168,16 @@ const HomeScreen = ({navigation}: Props) => {
     };
   }, [activeIndex]);
 
+  const handleProgress = (progress: { currentTime: number }) => {
+    if (activeIndex === activeIndex) {
+      setCurrentVideoProgress(progress.currentTime);
+    }
+  };
+
   const handlePlayPress = () => {
     navigation.navigate('Shorts', {
       initialVideoId: carouselData[activeIndex]?.id,
+      initialProgress: currentVideoProgress,
     });
   };
 
@@ -208,7 +216,7 @@ const HomeScreen = ({navigation}: Props) => {
               style={styles.video}
               resizeMode="cover"
               muted
-              repeat={false}  // Changed to false to prevent looping
+              repeat={false}
               playInBackground={false}
               playWhenInactive={false}
               onBuffer={({isBuffering: buffering}) => {
@@ -228,9 +236,10 @@ const HomeScreen = ({navigation}: Props) => {
                 setIsBuffering(prev => ({...prev, [item.id]: false}));
               }}
               onEnd={() => {
-                setPlayTrailer(false);  // Stop playing when video ends
+                setPlayTrailer(false);
               }}
               onError={error => console.warn('Video error:', error)}
+              onProgress={handleProgress}
             />
             {isBuffering[item.id] && (
               <View style={styles.bufferingContainer}>
