@@ -45,6 +45,27 @@ const ShortsScreen = ({route}: Props) => {
   const flatListRef = useRef<FlatList>(null);
   const hasSeekPerformed = useRef(false);
 
+  // Add back viewability configuration
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 100,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: any[]}) => {
+    if (viewableItems.length > 0 && typeof viewableItems[0].index === 'number') {
+      const newIndex = viewableItems[0].index;
+      setPlayingIndex(newIndex);
+
+      // Preload adjacent videos
+      if (videoRefs.current[newIndex + 1]) {
+        videoRefs.current[newIndex + 1].seek(0);
+      }
+      if (videoRefs.current[newIndex - 1]) {
+        videoRefs.current[newIndex - 1].seek(0);
+      }
+    }
+  }).current;
+
   useEffect(() => {
     const fetchVideos = async () => {
       try {
@@ -61,9 +82,12 @@ const ShortsScreen = ({route}: Props) => {
           );
           if (initialIndex !== -1) {
             setPlayingIndex(initialIndex);
-            flatListRef.current?.scrollToIndex({
-              index: initialIndex,
-              animated: false,
+            // Use requestAnimationFrame for smoother initial scroll
+            requestAnimationFrame(() => {
+              flatListRef.current?.scrollToIndex({
+                index: initialIndex,
+                animated: false,
+              });
             });
           }
         }
@@ -80,46 +104,50 @@ const ShortsScreen = ({route}: Props) => {
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;
     const isInitialVideo = item.id === route.params?.videoId;
+    const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1; // Only load adjacent videos
 
     return (
       <View style={styles.container}>
-        <Video
-          ref={ref => {
-            videoRefs.current[index] = ref;
-            if (
-              ref &&
-              isInitialVideo &&
-              !hasSeekPerformed.current &&
-              typeof route.params?.startTime === 'number'
-            ) {
-              ref.seek(route.params.startTime);
-              hasSeekPerformed.current = true;
-            }
-          }}
-          source={{
-            uri: isInitialVideo && route.params?.videoUrl 
-              ? route.params.videoUrl 
-              : item.url
-          }}
-          style={styles.video}
-          resizeMode="contain"
-          repeat={false}
-          playInBackground={false}
-          playWhenInactive={false}
-          paused={!isCurrentlyPlaying}
-          muted={false}
-          onBuffer={({isBuffering}) => {
-            setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
-          }}
-          onError={error => console.warn('Video error:', error)}
-          bufferConfig={{
-            minBufferMs: 15000,
-            maxBufferMs: 50000,
-            bufferForPlaybackMs: 2500,
-            bufferForPlaybackAfterRebufferMs: 5000,
-          }}
-          maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
-        />
+        {shouldLoad && (
+          <Video
+            ref={ref => {
+              videoRefs.current[index] = ref;
+              // Set initial position for the selected video
+              if (
+                ref &&
+                isInitialVideo &&
+                !hasSeekPerformed.current &&
+                typeof route.params?.startTime === 'number'
+              ) {
+                ref.seek(route.params.startTime);
+                hasSeekPerformed.current = true;
+              }
+            }}
+            source={{
+              uri: isInitialVideo && route.params?.videoUrl 
+                ? route.params.videoUrl 
+                : item.url
+            }}
+            style={styles.video}
+            resizeMode="contain"
+            repeat={true} // Enable loop for each video
+            playInBackground={false}
+            playWhenInactive={false}
+            paused={!isCurrentlyPlaying}
+            muted={false}
+            onBuffer={({isBuffering}) => {
+              setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
+            }}
+            onError={error => console.warn('Video error:', error)}
+            bufferConfig={{
+              minBufferMs: 15000,
+              maxBufferMs: 50000,
+              bufferForPlaybackMs: 2500,
+              bufferForPlaybackAfterRebufferMs: 5000,
+            }}
+            maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
+          />
+        )}
         {isBuffering[item.id] && (
           <View style={styles.bufferingContainer}>
             <ActivityIndicator color="white" size="large" />
@@ -180,6 +208,20 @@ const ShortsScreen = ({route}: Props) => {
       decelerationRate="fast"
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={Platform.OS === 'android'}
+      maxToRenderPerBatch={3}
+      windowSize={5}
+      initialNumToRender={2}
+      viewabilityConfig={viewabilityConfig}
+      onViewableItemsChanged={onViewableItemsChanged}
+      onScrollToIndexFailed={info => {
+        const wait = new Promise(resolve => setTimeout(resolve, 500));
+        wait.then(() => {
+          flatListRef.current?.scrollToIndex({
+            index: info.index,
+            animated: false,
+          });
+        });
+      }}
     />
   );
 };
