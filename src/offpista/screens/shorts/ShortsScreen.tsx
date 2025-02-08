@@ -29,47 +29,42 @@ interface VideoItem {
 interface Props {
   route: {
     params?: {
-      initialVideoId?: string;
-      initialProgress?: number;
+      videoId?: string;
+      startTime?: number;
+      videoUrl?: string;
     };
   };
 }
 
 const ShortsScreen = ({route}: Props) => {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
   const videoRefs = useRef<Array<any>>([]);
   const flatListRef = useRef<FlatList>(null);
-  const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
-  const currentlyPlayingRef = useRef<number | null>(null);
-  const initialProgressRef = useRef(route.params?.initialProgress || 0);
-  const hasSetInitialProgress = useRef(false);
+  const hasSeekPerformed = useRef(false);
 
-  // Fetch videos from Firebase
   useEffect(() => {
     const fetchVideos = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'videos'));
-        const fetchedVideos: VideoItem[] = querySnapshot.docs.map(doc => ({
+        const fetchedVideos = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         })) as VideoItem[];
         setVideos(fetchedVideos);
-        // If initialVideoId is provided, find its index and scroll to it
-        if (route.params?.initialVideoId) {
+
+        if (route.params?.videoId) {
           const initialIndex = fetchedVideos.findIndex(
-            video => video.id === route.params?.initialVideoId,
+            video => video.id === route.params?.videoId
           );
           if (initialIndex !== -1) {
-            // Set a small timeout to ensure the FlatList is rendered
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({
-                index: initialIndex,
-                animated: false,
-              });
-              setPlayingIndex(initialIndex);
-            }, 100);
+            setPlayingIndex(initialIndex);
+            flatListRef.current?.scrollToIndex({
+              index: initialIndex,
+              animated: false,
+            });
           }
         }
       } catch (error) {
@@ -80,99 +75,56 @@ const ShortsScreen = ({route}: Props) => {
     };
 
     fetchVideos();
-  }, [route.params?.initialVideoId]);
-
-  // Detect visible items & update playing video
-  const onViewableItemsChanged = useRef(
-    ({viewableItems}: {viewableItems: any[]}) => {
-      if (
-        viewableItems.length > 0 &&
-        typeof viewableItems[0].index === 'number'
-      ) {
-        const newIndex = viewableItems[0].index;
-        if (currentlyPlayingRef.current !== newIndex) {
-          currentlyPlayingRef.current = newIndex;
-          setPlayingIndex(newIndex);
-
-          // Preload the next video
-          if (newIndex + 1 < videos.length && videoRefs.current[newIndex + 1]) {
-            videoRefs.current[newIndex + 1].seek(0);
-          }
-
-          // Cleanup previous videos
-          Object.keys(videoRefs.current).forEach(key => {
-            const index = parseInt(key, 10);
-            if (Math.abs(index - newIndex) > 1 && videoRefs.current[index]) {
-              videoRefs.current[index].seek(0);
-            }
-          });
-        }
-      }
-    },
-  ).current;
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-    minimumViewTime: 100,
-  }).current;
+  }, [route.params?.videoId]);
 
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;
-    const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1;
-    const isInitialVideo = item.id === route.params?.initialVideoId;
+    const isInitialVideo = item.id === route.params?.videoId;
 
     return (
       <View style={styles.container}>
-        <View style={styles.videoContainer}>
-          {shouldLoad && (
-            <Video
-              ref={ref => (videoRefs.current[index] = ref)}
-              source={{uri: item?.url}}
-              style={styles.video}
-              resizeMode="contain"
-              repeat
-              playInBackground={false}
-              playWhenInactive={false}
-              paused={!isCurrentlyPlaying}
-              onLoad={() => {
-                // Seek to initial position for the initial video
-                if (
-                  isInitialVideo &&
-                  !hasSetInitialProgress.current &&
-                  initialProgressRef.current > 0
-                ) {
-                  videoRefs.current[index]?.seek(initialProgressRef.current);
-                  hasSetInitialProgress.current = true;
-                }
-                setIsBuffering(prev => ({...prev, [item.id]: false}));
-              }}
-              // eslint-disable-next-line @typescript-eslint/no-shadow
-              onBuffer={({isBuffering}) => {
-                setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
-              }}
-              onError={error => console.warn('Video error:', error)}
-              posterResizeMode="contain"
-              bufferConfig={{
-                minBufferMs: 15000,
-                maxBufferMs: 50000,
-                bufferForPlaybackMs: 2500,
-                bufferForPlaybackAfterRebufferMs: 5000,
-              }}
-              maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
-              onLoadStart={() => {
-                setIsBuffering(prev => ({...prev, [item.id]: true}));
-              }}
-              muted={false}
-            />
-          )}
-
-          {isBuffering[item.id] && (
-            <View style={styles.bufferingContainer}>
-              <ActivityIndicator color="white" size="large" />
-            </View>
-          )}
-        </View>
-
+        <Video
+          ref={ref => {
+            videoRefs.current[index] = ref;
+            if (
+              ref &&
+              isInitialVideo &&
+              !hasSeekPerformed.current &&
+              typeof route.params?.startTime === 'number'
+            ) {
+              ref.seek(route.params.startTime);
+              hasSeekPerformed.current = true;
+            }
+          }}
+          source={{
+            uri: isInitialVideo && route.params?.videoUrl 
+              ? route.params.videoUrl 
+              : item.url
+          }}
+          style={styles.video}
+          resizeMode="contain"
+          repeat={false}
+          playInBackground={false}
+          playWhenInactive={false}
+          paused={!isCurrentlyPlaying}
+          muted={false}
+          onBuffer={({isBuffering}) => {
+            setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
+          }}
+          onError={error => console.warn('Video error:', error)}
+          bufferConfig={{
+            minBufferMs: 15000,
+            maxBufferMs: 50000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000,
+          }}
+          maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
+        />
+        {isBuffering[item.id] && (
+          <View style={styles.bufferingContainer}>
+            <ActivityIndicator color="white" size="large" />
+          </View>
+        )}
         <View style={styles.overlay}>
           {/* Right Sidebar Icons */}
           <View style={styles.rightSidebar}>
@@ -227,21 +179,7 @@ const ShortsScreen = ({route}: Props) => {
       snapToAlignment="start"
       decelerationRate="fast"
       showsVerticalScrollIndicator={false}
-      initialNumToRender={2}
-      maxToRenderPerBatch={2}
-      windowSize={3}
-      viewabilityConfig={viewabilityConfig}
-      onViewableItemsChanged={onViewableItemsChanged}
       removeClippedSubviews={Platform.OS === 'android'}
-      onScrollToIndexFailed={info => {
-        const wait = new Promise(resolve => setTimeout(resolve, 500));
-        wait.then(() => {
-          flatListRef.current?.scrollToIndex({
-            index: info.index,
-            animated: false,
-          });
-        });
-      }}
     />
   );
 };

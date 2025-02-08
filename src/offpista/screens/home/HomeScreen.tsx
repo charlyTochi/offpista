@@ -120,11 +120,10 @@ const HomeScreen = ({navigation}: Props) => {
   const [playTrailer, setPlayTrailer] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselData, setCarouselData] = useState<VideoItem[]>([]);
-  const [, setLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState<{[key: string]: boolean}>({});
   const videoRefs = useRef<{[key: string]: any}>({});
+  const currentTimeRef = useRef(0);
   const initialLoadRef = useRef(true);
-  const [currentVideoProgress, setCurrentVideoProgress] = useState(0);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -138,8 +137,6 @@ const HomeScreen = ({navigation}: Props) => {
         setCarouselData(fetchedVideos);
       } catch (error) {
         console.error('Error fetching videos:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -150,34 +147,28 @@ const HomeScreen = ({navigation}: Props) => {
     let timer: NodeJS.Timeout;
 
     if (initialLoadRef.current) {
-      // On initial load, start timer immediately
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000);
       initialLoadRef.current = false;
     } else {
-      // For subsequent slides, reset video state
       setPlayTrailer(false);
       timer = setTimeout(() => {
         setPlayTrailer(true);
       }, 3000);
     }
 
-    return () => {
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [activeIndex]);
 
-  const handleProgress = (progress: { currentTime: number }) => {
-    if (activeIndex === activeIndex) {
-      setCurrentVideoProgress(progress.currentTime);
-    }
-  };
-
   const handlePlayPress = () => {
+    const currentVideo = carouselData[activeIndex];
+    if (!currentVideo) return;
+
     navigation.navigate('Shorts', {
-      initialVideoId: carouselData[activeIndex]?.id,
-      initialProgress: currentVideoProgress,
+      videoId: currentVideo.id,
+      startTime: currentTimeRef.current,
+      videoUrl: currentVideo.url,
     });
   };
 
@@ -186,12 +177,12 @@ const HomeScreen = ({navigation}: Props) => {
     if (index !== activeIndex) {
       setActiveIndex(index);
       
-      // Cleanup videos
       Object.entries(videoRefs.current).forEach(([id, ref]) => {
         if (ref) {
           const videoIndex = carouselData.findIndex(item => item.id === id);
           if (Math.abs(videoIndex - index) > 1) {
             ref.seek(0);
+            currentTimeRef.current = 0;
           }
         }
       });
@@ -201,24 +192,29 @@ const HomeScreen = ({navigation}: Props) => {
   const renderVideo = (item: VideoItem, index: number) => {
     const isCurrentVideo = activeIndex === index;
     const shouldPlay = playTrailer && isCurrentVideo;
-    const shouldLoad = Math.abs(activeIndex - index) <= 1;
 
     return (
       <View style={styles.mediaContainer}>
-        {shouldPlay && shouldLoad ? (
+        {shouldPlay ? (
           <TouchableOpacity
             style={styles.videoContainer}
             onPress={handlePlayPress}
             activeOpacity={1}>
             <Video
               ref={ref => (videoRefs.current[item.id] = ref)}
-              source={{uri: item?.url}}
+              source={{uri: item.url}}
               style={styles.video}
               resizeMode="cover"
-              muted
-              repeat={false}
+              muted={true}
+              repeat={true}
               playInBackground={false}
               playWhenInactive={false}
+              onProgress={({currentTime}) => {
+                if (isCurrentVideo) {
+                  currentTimeRef.current = currentTime;
+                }
+              }}
+              progressUpdateInterval={100}
               onBuffer={({isBuffering: buffering}) => {
                 setIsBuffering(prev => ({...prev, [item.id]: buffering}));
               }}
@@ -235,11 +231,6 @@ const HomeScreen = ({navigation}: Props) => {
               onLoad={() => {
                 setIsBuffering(prev => ({...prev, [item.id]: false}));
               }}
-              onEnd={() => {
-                setPlayTrailer(false);
-              }}
-              onError={error => console.warn('Video error:', error)}
-              onProgress={handleProgress}
             />
             {isBuffering[item.id] && (
               <View style={styles.bufferingContainer}>
@@ -249,7 +240,7 @@ const HomeScreen = ({navigation}: Props) => {
           </TouchableOpacity>
         ) : (
           <ImageBackground
-            source={{uri: item?.coverImage}}
+            source={{uri: item.coverImage}}
             style={styles.videoContainer}
             imageStyle={styles.coverImage}
             resizeMode="cover"
