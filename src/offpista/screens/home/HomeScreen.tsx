@@ -318,18 +318,18 @@ const HomeScreen = ({navigation}: Props) => {
         />
         <CategorySection />
         <MovieSection
-          title="Popular Movies"
+          title="For you"
           movies={popular}
           showDescription={true}
         />
         <MovieSection title="Drama" movies={movies} showDescription={true} />
         <MovieSection
-          title="Romance"
+          title="Drama"
           movies={trending}
           showDescription={true}
         />
         <MovieSection
-          title="Documentary"
+          title="Romance"
           movies={drama}
           showDescription={true}
         />

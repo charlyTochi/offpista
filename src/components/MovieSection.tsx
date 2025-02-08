@@ -59,7 +59,7 @@ const MovieSection = ({
 
 const styles = StyleSheet.create({
   moviesSection: {
-    height: height * 0.33,
+    height: height * 0.35,
     paddingHorizontal: 10,
     marginTop: 20,
   },
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   movieName: {
     fontSize: 12,
     marginTop: 10,
-    color: COLORS.white,
+    color: COLORS.iconGray,
   },
   movieDesc: {
     fontSize: 14,

@@ -46,7 +46,7 @@ const CategorySection = () => {
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <CustomText weightType="bold" style={styles.title}>
-          By Category
+          By category
         </CustomText>
       </View>
       <ScrollView
@@ -54,7 +54,7 @@ const CategorySection = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}>
         {categories.map(category => (
-          <TouchableOpacity key={category.id}>
+          <TouchableOpacity style={{margin: 5}} key={category.id}>
             <LinearGradient
               colors={category.colors}
               style={styles.categoryCard}

@@ -43,8 +43,9 @@ const MyTabs = () => {
         tabBarStyle: {
           backgroundColor: 'black',
           paddingBottom:10,
+          paddingTop:10,
           borderTopColor: COLORS.secondary,
-          height: SizeUtils.responsiveHeight(6),
+          height: SizeUtils.responsiveHeight(7),
         },
       })}>
       <Tab.Screen options={{headerShown: false}} name="Home" component={HomeScreen} />
