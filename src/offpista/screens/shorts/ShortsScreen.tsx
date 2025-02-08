@@ -7,7 +7,6 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
-  StatusBar,
 } from 'react-native';
 import Video from 'react-native-video';
 import {collection, getDocs} from 'firebase/firestore';
@@ -15,6 +14,7 @@ import {ICONS} from '../../utils/Icons';
 import CustomText from '../../components/CustomText';
 import {COLORS} from '../../utils/Colors';
 import {db} from '../../firebase/firebaseConfig';
+import {useNavigation} from '@react-navigation/native';
 const {width, height} = Dimensions.get('window');
 
 interface VideoItem {
@@ -28,6 +28,7 @@ interface VideoItem {
 }
 
 interface Props {
+  navigation: any;
   route: {
     params?: {
       videoId?: string;
@@ -37,7 +38,7 @@ interface Props {
   };
 }
 
-const ShortsScreen = ({route}: Props) => {
+const ShortsScreen = ({route, navigation}: Props) => {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,22 +103,21 @@ const ShortsScreen = ({route}: Props) => {
     fetchVideos();
   }, [route.params?.videoId]);
 
-  // Add cleanup effect
+  // Add cleanup when screen is unfocused
   useEffect(() => {
-    // Hide status bar when entering shorts
-    StatusBar.setHidden(true);
-    
-    return () => {
-      // Show status bar when leaving shorts
-      StatusBar.setHidden(false);
-      // Stop all videos when unmounting
+    const unsubscribe = navigation.addListener('blur', () => {
+      // Pause all videos when leaving screen
+      setPlayingIndex(null);
+      // Reset all video positions
       videoRefs.current.forEach(ref => {
         if (ref) {
           ref.seek(0);
         }
       });
-    };
-  }, []);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;

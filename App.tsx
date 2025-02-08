@@ -4,9 +4,10 @@ import {NavigationContainer} from '@react-navigation/native';
 import {ICONS} from './src/offpista/utils/Icons';
 import HomeScreen from './src/offpista/screens/home/HomeScreen';
 import ShortsScreen from './src/offpista/screens/shorts/ShortsScreen';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { COLORS } from './src/offpista/utils/Colors';
-import { SizeUtils } from './src/offpista/utils/SizeUtils';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {COLORS} from './src/offpista/utils/Colors';
+import {SizeUtils} from './src/offpista/utils/SizeUtils';
+import {StatusBar} from 'react-native';
 
 // Bottom Tab Navigator
 const Tab = createBottomTabNavigator();
@@ -39,11 +40,15 @@ const MyTabs = () => {
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: 'gray',
-        tabBarStyle: { backgroundColor: 'black', borderTopColor: COLORS.secondary, height: SizeUtils.responsiveHeight(9) }, // Set background color to black
-
+        tabBarStyle: {
+          backgroundColor: 'black',
+          paddingBottom:10,
+          borderTopColor: COLORS.secondary,
+          height: SizeUtils.responsiveHeight(6),
+        },
       })}>
       <Tab.Screen options={{headerShown: false}} name="Home" component={HomeScreen} />
-      <Tab.Screen options={{headerShown: false}}  name="Shorts" component={ShortsScreen} />
+      <Tab.Screen options={{headerShown: false}} name="Shorts" component={ShortsScreen} />
       <Tab.Screen options={{headerShown: false}} name="Profile" component={ShortsScreen} />
       <Tab.Screen options={{headerShown: false}} name="Rewards" component={ShortsScreen} />
     </Tab.Navigator>
@@ -54,9 +59,14 @@ const MyTabs = () => {
 export default function App() {
   return (
     <GestureHandlerRootView style={{flex: 1}}>
-    <NavigationContainer>
-      <MyTabs />
-    </NavigationContainer>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
+      <NavigationContainer>
+        <MyTabs />
+      </NavigationContainer>
     </GestureHandlerRootView>
   );
 }
