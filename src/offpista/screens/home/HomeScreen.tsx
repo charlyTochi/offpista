@@ -124,6 +124,9 @@ const HomeScreen = ({navigation}: Props) => {
   const videoRefs = useRef<{[key: string]: any}>({});
   const currentTimeRef = useRef(0);
   const initialLoadRef = useRef(true);
+  const [currentVideoTime, setCurrentVideoTime] = useState<{
+    [key: string]: number;
+  }>({});
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -167,15 +170,10 @@ const HomeScreen = ({navigation}: Props) => {
 
     // Stop video playback before navigation
     setPlayTrailer(false);
-    
-    // Reset the current video position
-    if (videoRefs.current[currentVideo.id]) {
-      videoRefs.current[currentVideo.id].seek(0);
-    }
 
     navigation.navigate('Shorts', {
       videoId: currentVideo.id,
-      startTime: 0, // Always start from beginning for better UX
+      startTime: currentVideoTime[currentVideo.id] || 0, // Pass the current time
       videoUrl: currentVideo.url,
     });
   };
@@ -184,7 +182,7 @@ const HomeScreen = ({navigation}: Props) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     if (index !== activeIndex) {
       setActiveIndex(index);
-      
+
       Object.entries(videoRefs.current).forEach(([id, ref]) => {
         if (ref) {
           const videoIndex = carouselData.findIndex(item => item.id === id);
@@ -219,7 +217,10 @@ const HomeScreen = ({navigation}: Props) => {
               playWhenInactive={false}
               onProgress={({currentTime}) => {
                 if (isCurrentVideo) {
-                  currentTimeRef.current = currentTime;
+                  setCurrentVideoTime(prev => ({
+                    ...prev,
+                    [item.id]: currentTime,
+                  }));
                 }
               }}
               progressUpdateInterval={100}
@@ -257,7 +258,7 @@ const HomeScreen = ({navigation}: Props) => {
         <View style={styles.overlayContent}>
           <View style={styles.searchIcon}>{ICONS.searchIcon}</View>
           <View style={styles.bottomSection}>
-          <View style={styles.tagsContainer}>
+            <View style={styles.tagsContainer}>
               <CustomText style={styles.tag}>New</CustomText>
               <CustomText style={styles.tag}>Detective</CustomText>
               <CustomText style={styles.tag}>Crime</CustomText>
@@ -317,19 +318,15 @@ const HomeScreen = ({navigation}: Props) => {
           showDescription={true}
         />
         <CategorySection />
-        <MovieSection
-          title="For you"
-          movies={popular}
-          showDescription={true}
-        />
+        <MovieSection title="For you" movies={popular} showDescription={true} />
         <MovieSection title="Drama" movies={movies} showDescription={true} />
         <MovieSection
-          title="Drama"
+          title="Romance"
           movies={trending}
           showDescription={true}
         />
         <MovieSection
-          title="Romance"
+          title="Documentary"
           movies={drama}
           showDescription={true}
         />
@@ -354,16 +351,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   videoContainer: {
-    width: width,
+    width: '100%',
     height: '100%',
     margin: 0,
     padding: 0,
-    overflow: 'hidden',
     backgroundColor: COLORS.secondary,
   },
   video: {
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
     backgroundColor: COLORS.secondary,
   },
   overlayContent: {
@@ -376,7 +375,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   searchIcon: {
-    marginTop: 30,
+    marginTop: 50,
   },
   bottomSection: {
     justifyContent: 'center',
@@ -443,7 +442,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   coverImage: {
-    // Add any necessary styles for the cover image
+    width: '100%',
+    height: '100%',
   },
 });
 

@@ -14,7 +14,6 @@ import {ICONS} from '../../utils/Icons';
 import CustomText from '../../components/CustomText';
 import {COLORS} from '../../utils/Colors';
 import {db} from '../../firebase/firebaseConfig';
-import {useNavigation} from '@react-navigation/native';
 const {width, height} = Dimensions.get('window');
 
 interface VideoItem {
@@ -46,6 +45,7 @@ const ShortsScreen = ({route, navigation}: Props) => {
   const videoRefs = useRef<Array<any>>([]);
   const flatListRef = useRef<FlatList>(null);
   const hasSeekPerformed = useRef(false);
+  const initialSeekPerformed = useRef<{[key: string]: boolean}>({});
 
   // Add back viewability configuration
   const viewabilityConfig = useRef({
@@ -122,49 +122,50 @@ const ShortsScreen = ({route, navigation}: Props) => {
   const renderItem = ({item, index}: {item: VideoItem; index: number}) => {
     const isCurrentlyPlaying = playingIndex === index;
     const isInitialVideo = item.id === route.params?.videoId;
-    const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1; // Only load adjacent videos
+    const shouldLoad = Math.abs((playingIndex || 0) - index) <= 1;
 
     return (
       <View style={styles.container}>
         {shouldLoad && (
-          <Video
-            ref={ref => {
-              videoRefs.current[index] = ref;
-              // Set initial position for the selected video
-              if (
-                ref &&
-                isInitialVideo &&
-                !hasSeekPerformed.current &&
-                typeof route.params?.startTime === 'number'
-              ) {
-                ref.seek(route.params.startTime);
-                hasSeekPerformed.current = true;
-              }
-            }}
-            source={{
-              uri: isInitialVideo && route.params?.videoUrl 
-                ? route.params.videoUrl 
-                : item.url
-            }}
-            style={styles.video}
-            resizeMode="contain"
-            repeat={true} // Enable loop for each video
-            playInBackground={false}
-            playWhenInactive={false}
-            paused={!isCurrentlyPlaying}
-            muted={false}
-            onBuffer={({isBuffering}) => {
-              setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
-            }}
-            onError={error => console.warn('Video error:', error)}
-            bufferConfig={{
-              minBufferMs: 15000,
-              maxBufferMs: 50000,
-              bufferForPlaybackMs: 2500,
-              bufferForPlaybackAfterRebufferMs: 5000,
-            }}
-            maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
-          />
+          <View style={styles.videoWrapper}>
+            <Video
+              ref={ref => {
+                videoRefs.current[index] = ref;
+                if (
+                  ref &&
+                  isInitialVideo &&
+                  !initialSeekPerformed.current[item.id] &&
+                  typeof route.params?.startTime === 'number'
+                ) {
+                  ref.seek(route.params.startTime);
+                  initialSeekPerformed.current[item.id] = true;
+                }
+              }}
+              source={{
+                uri: isInitialVideo && route.params?.videoUrl 
+                  ? route.params.videoUrl 
+                  : item.url
+              }}
+              style={styles.video}
+              resizeMode="cover"
+              repeat={true}
+              playInBackground={false}
+              playWhenInactive={false}
+              paused={!isCurrentlyPlaying}
+              muted={false}
+              onBuffer={({isBuffering}) => {
+                setIsBuffering(prev => ({...prev, [item.id]: isBuffering}));
+              }}
+              onError={error => console.warn('Video error:', error)}
+              bufferConfig={{
+                minBufferMs: 15000,
+                maxBufferMs: 50000,
+                bufferForPlaybackMs: 2500,
+                bufferForPlaybackAfterRebufferMs: 5000,
+              }}
+              maxBitRate={Platform.OS === 'android' ? 2000000 : undefined}
+            />
+          </View>
         )}
         {isBuffering[item.id] && (
           <View style={styles.bufferingContainer}>
@@ -246,16 +247,25 @@ const ShortsScreen = ({route, navigation}: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    width,
-    height,
+    width: width,
+    height: height,
+    backgroundColor: COLORS.secondary,
+    position: 'relative',
+  },
+  videoWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: COLORS.secondary,
   },
-  videoContainer: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
   video: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
     width: '100%',
     height: '100%',
   },
@@ -263,6 +273,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    zIndex: 1,
   },
   rightSidebar: {
     position: 'absolute',
@@ -327,6 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 2,
   },
   loadingContainer: {
     flex: 1,

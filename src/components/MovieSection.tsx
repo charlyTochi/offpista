@@ -3,6 +3,7 @@ import {View, FlatList, Image, StyleSheet, Dimensions, TouchableOpacity} from 'r
 import CustomText from '../offpista/components/CustomText';
 import {ICONS} from '../offpista/utils/Icons';
 import {COLORS} from '../offpista/utils/Colors';
+import { SizeUtils } from '../offpista/utils/SizeUtils';
 
 const {height} = Dimensions.get('window');
 
@@ -60,7 +61,6 @@ const MovieSection = ({
 const styles = StyleSheet.create({
   moviesSection: {
     height: height * 0.35,
-    paddingHorizontal: 10,
     marginTop: 20,
   },
   sectionHeader: {
@@ -75,8 +75,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   movieContainer: {
-    width: 146,
-    marginRight: 15,
+    width: SizeUtils.responsiveWidth(36),
   },
   movieName: {
     fontSize: 12,
